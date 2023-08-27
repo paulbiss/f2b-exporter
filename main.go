@@ -30,6 +30,8 @@ type prisoner struct {
 	geohash string
 	// currentlyBanned indicates if the prisoner is currently banned
 	currentlyBanned bool
+  // the ISP associated with this prisoner
+  isp string
 }
 
 var (
@@ -38,7 +40,7 @@ var (
 			Name: "f2b_banned_ip",
 			Help: "Number of banned IPs per country / region",
 		},
-		[]string{"country", "geohash", "jail", "currently_banned"},
+		[]string{"country", "geohash", "jail", "currently_banned", "isp"},
 	)
 )
 
@@ -47,9 +49,11 @@ func init() {
 }
 
 func main() {
-	pflag.StringP("port", "p", "8080", "port to use for the exporter (defaults to 8080)")
+	pflag.StringP("port", "p", "9119", "port to use for the exporter (defaults to 9119)")
 	pflag.StringP("database", "d", "/var/lib/fail2ban/fail2ban.sqlite3", "fail2ban sqlite database location")
 	pflag.StringP("remote", "r", "freeGeoIP", "remote provider to use (defaults to freeGeoIP)")
+	pflag.StringP("keyfile", "k", "", "keyfile for remote provider API key")
+	pflag.StringP("cache", "c", "", "cache for IPs to avoid requerying provider")
 	pflag.Parse()
 	if err := viper.BindPFlags(pflag.CommandLine); err != nil {
 		log.Fatal(err)
@@ -92,7 +96,15 @@ func update() error {
 
 	geocount.Reset()
 	for _, prisoner := range prisoners {
-		geocount.With(prometheus.Labels{"country": prisoner.country, "geohash": prisoner.geohash, "jail": prisoner.jail, "currently_banned": strconv.FormatBool(prisoner.currentlyBanned)}).Inc()
+		geocount.With(
+      prometheus.Labels{
+        "country": prisoner.country,
+        "geohash": prisoner.geohash,
+        "jail": prisoner.jail,
+        "currently_banned": strconv.FormatBool(prisoner.currentlyBanned),
+        "isp": prisoner.isp,
+      },
+    ).Inc()
 	}
 
 	return nil
@@ -118,6 +130,7 @@ func jailed(db *sqlittle.DB, provider provider.Provider) ([]prisoner, error) {
 		}
 		p.country = payload.CountryCode
 		p.geohash = payload.GeoHash
+    p.isp = payload.ISP
 
 		if int64(p.timeofban+p.bantime) > time.Now().Unix() || p.bantime < 0 {
 			p.currentlyBanned = true

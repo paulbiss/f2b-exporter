@@ -13,6 +13,8 @@ type Payload struct {
 	CountryCode string
 	// GeoHash is latitude and longitude combined in a hash
 	GeoHash string
+  // ISP associated with the IP address
+  ISP string
 }
 
 // Provider is able to return a prisoners location data
@@ -26,6 +28,9 @@ func New(provider string) (Provider, error) {
 	switch provider {
 	case "freeGeoIP":
 		pr := new(freeGeoIP)
+		return pr, nil
+	case "ipgeolocation":
+		pr := new(ipgeo)
 		return pr, nil
 	}
 	return nil, ErrNoSuchProvider

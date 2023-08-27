@@ -46,5 +46,5 @@ func (f freeGeoIP) Lookup(ip string) (Payload, error) {
 		return Payload{}, err
 	}
 
-	return Payload{data.CountryCode, geohash.Encode(data.Latitude, data.Longitude)}, nil
+	return Payload{data.CountryCode, geohash.Encode(data.Latitude, data.Longitude), ""}, nil
 }
